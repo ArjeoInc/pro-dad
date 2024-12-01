@@ -1,10 +1,10 @@
 import './App.css'
-import Artifact from './artifact-component'
+import SuperDadRating from './artifact-component'
 
 function App() {
   return (
     <>
-      <Artifact />
+      <SuperDadRating />
     </>
   )
 }
