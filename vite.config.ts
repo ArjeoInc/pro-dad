@@ -4,7 +4,7 @@ import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: '/pro-dad/',
+  base: 'https://xytoe.com/',
   plugins: [react()],
   resolve: {
     alias: {
