@@ -1,209 +1,329 @@
-import { useState } from 'react';
-import { Star, Heart, Trophy, ThumbsUp, Sparkles, Crown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ShoppingBag, Star, Clock } from 'lucide-react';
 
-const activities = [
-  { id: 1, name: "Ice Skating Adventure", description: "Took the girls ice skating" },
-  { id: 2, name: "Movie Time", description: "Watched '3 Dads and a Little Lady' together" },
-  { id: 3, name: "Master Chef", description: "Made delicious pancakes from scratch" },
-  { id: 4, name: "Jaffa Tour", description: "Fun visits to Cassis Cafe and Gemma Restaurant" },
-  { id: 5, name: "Lunch Box Hero", description: "Prepared yummy school lunches with veggies" },
-  { id: 6, name: "Punctuality Pro", description: "Got everyone to school on time!" }
-];
+const POINT_VALUES = {
+  BASE_POINTS: 1,
+  MAX_MULTIPLIER: 3,
+  MULTIPLIER_INCREASE: 0.1,
+  PENALTY_POINTS: 1,
+  PENALTY_INTERVAL: 5000
+};
 
-const kids = ["Nathalie", "Lana", "Mila"];
+const TOE_STYLES = {
+  basic: {
+    name: "Natural Toe",
+    price: 0,
+    nailGradient: {
+      start: "#ffd1dc",
+      end: "#ffb6c1"
+    },
+    description: "Just a regular toe"
+  },
+  pink: {
+    name: "Baby Pink",
+    price: 50,
+    nailGradient: {
+      start: "#ffb6c1",
+      end: "#ff69b4"
+    },
+    description: "Sweet pink polish"
+  },
+  red: {
+    name: "Classic Red",
+    price: 75,
+    nailGradient: {
+      start: "#ff4444",
+      end: "#cc0000"
+    },
+    description: "Timeless red polish"
+  },
+  blue: {
+    name: "Ocean Blue",
+    price: 100,
+    nailGradient: {
+      start: "#0088ff",
+      end: "#0044cc"
+    },
+    description: "Deep sea vibes"
+  },
+  golden: {
+    name: "24K Gold",
+    price: 1500,
+    nailGradient: {
+      start: "#ffd700",
+      end: "#daa520"
+    },
+    description: "Pure gold luxury"
+  }
+};
 
-interface Ratings {
-  [key: number]: number;
+interface RealisticToeProps {
+  style: keyof typeof TOE_STYLES;
+  isSmashed: boolean;
 }
 
-interface AnimatingStars {
-  [key: number]: boolean;
+interface BloodDrop {
+  id: number;
+  x: number;
+  y: number;
+  angle: number;
+  scale: number;
 }
 
-const SuperDadRating = () => {
-  const [ratings, setRatings] = useState<Ratings>({});
-  const [comments, setComments] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [animatingStars, setAnimatingStars] = useState<AnimatingStars>({});
-  const [selectedKid, setSelectedKid] = useState("");
-  const [hoveredStar, setHoveredStar] = useState<string | null>(null);
+type ToeStyleKey = keyof typeof TOE_STYLES;
 
-  const handleRating = (activityId: number, rating: number) => {
-    setRatings(prev => ({
-      ...prev,
-      [activityId]: rating
+const RealisticToe: React.FC<RealisticToeProps> = ({ style, isSmashed }) => {
+  const gradientId = `nailGradient-${style}`;
+  
+  return (
+    <svg 
+      viewBox="0 0 200 300" 
+      className={`w-full h-full transition-transform duration-150 ${isSmashed ? 'scale-95' : ''}`}
+    >
+      <defs>
+        <linearGradient id="skinGradient" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#ffdbac"/>
+          <stop offset="50%" stopColor="#f1c27d"/>
+          <stop offset="100%" stopColor="#e0ac69"/>
+        </linearGradient>
+        
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={TOE_STYLES[style].nailGradient.start}/>
+          <stop offset="100%" stopColor={TOE_STYLES[style].nailGradient.end}/>
+        </linearGradient>
+      </defs>
+
+      <g>
+        <path 
+          d="M40 50 C40 30, 160 30, 160 50 L180 200 C180 260, 20 260, 20 200 Z" 
+          fill="url(#skinGradient)"
+        />
+        
+        <path 
+          d="M60 40 C60 20, 140 20, 140 40 Q140 60, 100 70 Q60 60, 60 40"
+          fill={`url(#${gradientId})`}
+          stroke={TOE_STYLES[style].nailGradient.start}
+          strokeWidth="1"
+        />
+        
+        <path 
+          d="M40 120 Q100 130 160 120" 
+          fill="none" 
+          stroke="#e0ac69" 
+          strokeWidth="2" 
+          opacity="0.3"
+        />
+        
+        <path 
+          d="M45 140 Q100 150 155 140" 
+          fill="none" 
+          stroke="#e0ac69" 
+          strokeWidth="2" 
+          opacity="0.3"
+        />
+      </g>
+    </svg>
+  );
+};
+
+const ToeSmashGame = () => {
+  const [score, setScore] = useState(0);
+  const [timeUntilPenalty, setTimeUntilPenalty] = useState(POINT_VALUES.PENALTY_INTERVAL);
+  const [isActive, setIsActive] = useState(false);
+  const [isSmashed, setIsSmashed] = useState(false);
+  const [multiplier, setMultiplier] = useState(1);
+  const [showShop, setShowShop] = useState(false);
+  const [currentStyle, setCurrentStyle] = useState<ToeStyleKey>('basic');
+  const [ownedStyles, setOwnedStyles] = useState<ToeStyleKey[]>(['basic']);
+  const [bloodDrops, setBloodDrops] = useState<BloodDrop[]>([]);
+  const [showHammer, setShowHammer] = useState(false);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isActive) {
+      interval = setInterval(() => {
+        setTimeUntilPenalty(prev => {
+          if (prev <= 0) {
+            setScore(current => Math.max(0, current - POINT_VALUES.PENALTY_POINTS));
+            setMultiplier(1);
+            return POINT_VALUES.PENALTY_INTERVAL;
+          }
+          return prev - 100;
+        });
+      }, 100);
+    }
+    return () => clearInterval(interval);
+  }, [isActive]);
+
+  const createBloodEffect = () => {
+    const newDrops = Array(15).fill(0).map((_, i) => ({
+      id: Date.now() + i,
+      x: 50 + (Math.random() - 0.5) * 80,
+      y: 50 + (Math.random() - 0.5) * 80,
+      angle: Math.random() * 360,
+      scale: 0.5 + Math.random()
     }));
-    
-    setAnimatingStars(prev => ({
-      ...prev,
-      [activityId]: true
-    }));
-    
+    setBloodDrops((prev: BloodDrop[]) => [...prev, ...newDrops]);
     setTimeout(() => {
-      setAnimatingStars(prev => ({
-        ...prev,
-        [activityId]: false
-      }));
+      setBloodDrops(prev => prev.filter(drop => !newDrops.includes(drop)));
     }, 1000);
   };
 
-  const calculateAverageRating = () => {
-    const values = Object.values(ratings);
-    return values.length ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1) : 0;
+  const handleSmash = () => {
+    if (!isActive || isSmashed) return;
+
+    createBloodEffect();
+    setShowHammer(true);
+    setIsSmashed(true);
+
+    // Integer points calculation
+    const pointsEarned = Math.floor(POINT_VALUES.BASE_POINTS * multiplier);
+    setScore(prev => prev + pointsEarned);
+
+    setMultiplier(prev => Math.min(prev + POINT_VALUES.MULTIPLIER_INCREASE, POINT_VALUES.MAX_MULTIPLIER));
+    setTimeUntilPenalty(POINT_VALUES.PENALTY_INTERVAL);
+
+    setTimeout(() => {
+      setIsSmashed(false);
+      setShowHammer(false);
+    }, 200);
   };
 
-  interface StarRatingProps {
-    activityId: number;
-    rating?: number;
-  }
-
-  const StarRating = ({ activityId }: StarRatingProps) => {
-    return (
-      <div className="flex space-x-1 relative">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <div key={star} className="relative group">
-            <div className="absolute -inset-2 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 rounded-full opacity-0 group-hover:opacity-75 blur transition-all duration-300" />
-            <Star
-              size={24}
-              className={`
-                relative cursor-pointer transition-all duration-300
-                hover:scale-150 hover:rotate-[360deg]
-                active:scale-150 active:rotate-[720deg]
-                group-hover:drop-shadow-lg
-                ${(ratings[activityId] || 0) >= star
-                  ? 'fill-yellow-400 stroke-yellow-400 hover:fill-orange-400 hover:stroke-orange-400'
-                  : 'stroke-gray-300 hover:stroke-pink-300 hover:fill-pink-100'
-                }
-                ${animatingStars[activityId] ? 'animate-bounce' : ''}
-              `}
-              onMouseEnter={() => setHoveredStar(`${activityId}-${star}`)}
-              onMouseLeave={() => setHoveredStar(null)}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRating(activityId, star);
-              }}
-            />
-            {hoveredStar === `${activityId}-${star}` && (
-              <Sparkles 
-                size={32}
-                className="absolute -top-4 -right-4 text-yellow-400 animate-spin"
-              />
-            )}
-            {(ratings[activityId] || 0) >= star && (
-              <Sparkles 
-                size={16}
-                className={`
-                  absolute -top-2 -right-2 text-yellow-400
-                  animate-spin
-                  ${animatingStars[activityId] ? 'opacity-100' : 'opacity-0'}
-                `}
-              />
-            )}
-          </div>
-        ))}
-      </div>
-    );
+  const purchaseStyle = (style: keyof typeof TOE_STYLES) => {
+    if (score >= TOE_STYLES[style].price && !ownedStyles.includes(style)) {
+      setScore(prev => prev - TOE_STYLES[style].price);
+      setOwnedStyles(prev => [...prev, style]);
+      setCurrentStyle(style);
+      setShowShop(false);
+    }
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-6 bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 rounded-xl shadow-lg">
-      <div className="text-center space-y-4">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-transparent bg-clip-text hover:scale-105 transition-transform cursor-pointer">
-          Super Dad Weekend Rating
-          <Trophy className="inline-block ml-2 text-yellow-500 animate-bounce" />
-        </h1>
-        
-        <select
-          value={selectedKid}
-          onChange={(e) => setSelectedKid(e.target.value)}
-          className="px-4 py-2 rounded-lg border-2 border-purple-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 bg-white text-purple-700 font-semibold cursor-pointer hover:bg-purple-50 transition-colors"
-        >
-          <option value="">Choose who's rating Dad...</option>
-          {kids.map(kid => (
-            <option key={kid} value={kid}>{kid}</option>
-          ))}
-        </select>
-        
-        {selectedKid && (
-          <p className="text-purple-600 font-medium animate-fade-in">
-            Hi {selectedKid}! Let's show Mom how awesome Dad was! 
-            <Crown className="inline-block ml-2 text-yellow-500" />
-          </p>
-        )}
-      </div>
-
-      <div className="grid gap-4">
-        {activities.map((activity) => (
-          <div 
-            key={activity.id}
-            className="p-4 rounded-lg bg-white hover:shadow-xl transition-all duration-300 group"
-          >
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="font-semibold text-purple-700 group-hover:text-indigo-600 transition-colors">{activity.name}</h3>
-                <p className="text-sm text-gray-600">{activity.description}</p>
-              </div>
-              <StarRating activityId={activity.id} rating={ratings[activity.id]} />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="space-y-4">
-        <textarea
-          className="w-full p-3 rounded-lg border-2 border-purple-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
-          placeholder={`Add a special message for Mom about Dad's weekend...`}
-          value={comments}
-          onChange={(e) => setComments(e.target.value)}
-          rows={3}
-        />
-
+    <div className="flex flex-col items-center gap-6 p-8 bg-gray-50 rounded-xl max-w-xl mx-auto">
+      {/* Score Display */}
+      <div className="w-full flex justify-between items-center">
+        <div className="flex items-center gap-2 text-3xl font-bold">
+          <Star className="w-8 h-8 text-yellow-500" />
+          <span>{Math.floor(score)}</span>
+        </div>
         <button
-          onClick={() => setSubmitted(true)}
-          disabled={!selectedKid || Object.keys(ratings).length === 0}
-          className="w-full py-3 px-6 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-semibold 
-            hover:from-purple-500 hover:to-indigo-500 hover:scale-105 
-            disabled:opacity-50 disabled:cursor-not-allowed 
-            transition-all duration-300
-            active:scale-95"
+          onClick={() => setShowShop(!showShop)}
+          className="p-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
         >
-          Submit {selectedKid}'s Ratings
+          <ShoppingBag className="w-6 h-6" />
         </button>
       </div>
 
-      {submitted && (
-        <div className="mt-6 p-6 bg-white rounded-lg shadow-xl space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-transparent bg-clip-text">
-              {selectedKid}'s Report Card
-            </h2>
-            <div className="flex items-center space-x-2">
-              <Trophy className="text-yellow-500 animate-spin" />
-              <span className="text-2xl font-bold text-yellow-500 animate-pulse">
-                {calculateAverageRating()}/5
-              </span>
+      {/* Timer */}
+      <div className="w-full flex items-center gap-2">
+        <Clock className={timeUntilPenalty < 1000 ? 'text-red-500' : 'text-blue-500'} />
+        <div className="w-full h-3 bg-gray-200 rounded-full">
+          <div
+            className={`h-full transition-all duration-100 ${
+              timeUntilPenalty < 1000 ? 'bg-red-500' : 'bg-blue-500'
+            }`}
+            style={{ width: `${(timeUntilPenalty / POINT_VALUES.PENALTY_INTERVAL) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Multiplier */}
+      <div className="text-xl font-bold text-purple-500">
+        x{Math.floor(multiplier)}
+      </div>
+
+      {/* Game Area */}
+      <div className="relative w-64 h-96">
+        <button
+          onClick={handleSmash}
+          disabled={!isActive || isSmashed}
+          className="w-full h-full relative"
+        >
+          <RealisticToe style={currentStyle} isSmashed={isSmashed} />
+          
+          {bloodDrops.map(drop => (
+            <div
+              key={drop.id}
+              className="absolute w-2 h-2 bg-red-600 rounded-full animate-drip"
+              style={{
+                left: `${drop.x}%`,
+                top: `${drop.y}%`,
+                transform: `rotate(${drop.angle}deg) scale(${drop.scale})`,
+              }}
+            />
+          ))}
+
+          {showHammer && (
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 origin-bottom">
+              <div className="text-7xl animate-smash">
+                🔨
+              </div>
+            </div>
+          )}
+        </button>
+      </div>
+
+      {/* Shop Modal */}
+      {showShop && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">Toe Shop</h2>
+              <button onClick={() => setShowShop(false)} className="text-gray-500">✕</button>
+            </div>
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {Object.entries(TOE_STYLES).map(([id, item]) => (
+                <div key={id} className="p-4 border rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="font-bold">{item.name}</h3>
+                      <p className="text-sm text-gray-600">{item.description}</p>
+                    </div>
+                    {ownedStyles.includes(id as ToeStyleKey) ? (
+                      <button
+                        onClick={() => {
+                          setCurrentStyle(id as ToeStyleKey);
+                          setShowShop(false);
+                        }}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                      >
+                        Use
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => purchaseStyle(id as ToeStyleKey)}
+                        disabled={score < item.price}
+                        className={`px-4 py-2 rounded-lg ${
+                          score >= item.price
+                            ? 'bg-green-500 text-white hover:bg-green-600'
+                            : 'bg-gray-200 text-gray-500'
+                        }`}
+                      >
+                        {item.price} pts
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-          
-          <div className="flex items-center space-x-2">
-            <Heart className="text-pink-500 animate-bounce" />
-            <p className="text-gray-700 italic">"{comments}"</p>
-          </div>
-          
-          <div className="flex justify-center space-x-4">
-            <ThumbsUp className="text-green-500 animate-bounce" size={32} />
-            <Sparkles className="text-yellow-500 animate-spin" size={32} />
-            <Trophy className="text-orange-500 animate-pulse" size={32} />
-            <Crown className="text-purple-500 animate-bounce" size={32} />
-          </div>
-          
-          <p className="text-center text-lg font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-transparent bg-clip-text animate-pulse">
-            Dad's Weekend Score: AMAZING! 🏆
-          </p>
         </div>
       )}
+
+      {/* Start Button */}
+      <button
+        onClick={() => {
+          setIsActive(true);
+          setScore(0);
+          setMultiplier(1);
+          setTimeUntilPenalty(POINT_VALUES.PENALTY_INTERVAL);
+        }}
+        className="px-8 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 text-xl font-bold"
+      >
+        {isActive ? 'Reset Game' : 'Start Game'}
+      </button>
     </div>
   );
 };
 
-export default SuperDadRating;
+export default ToeSmashGame;

@@ -24,6 +24,7 @@
 - [Contributing](#contributing)
 - [License](#license)
 - [Acknowledgements](#acknowledgements)
+- [Live Site](#live-site)
 
 ## Summary
 
@@ -317,3 +318,6 @@ However, it did not fully meet my needs, so I decided to make my own project, as
    * was completely pre-configured (no need to install or configure additional stuff),
    * was ready to go with a single `npm install`, and
    * included all components and libraries needed to fully replicate the Artifacts environment.
+
+## Live Site
+The project is live at [https://xytoe.com](https://xytoe.com)
