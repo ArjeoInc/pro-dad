@@ -3,7 +3,7 @@ import Switch from './switch-shake';
 import ToeSmashGame from './artifact-component'
 
 const App: React.FC = () => {
-  const [gameStarted, setGameStarted] = useState(false);
+  const [gameStarted, setGameStarted] = useState(true); // Changed to true to skip start button
 
   const handleGameStart = () => {
     setGameStarted(true);

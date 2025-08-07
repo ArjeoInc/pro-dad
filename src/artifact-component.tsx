@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { ShoppingBag, Star, Clock } from 'lucide-react';
+import { ShoppingBag, Star, Clock, Zap, Crown, Sparkles } from 'lucide-react';
 
 const POINT_VALUES = {
   BASE_POINTS: 1,
-  MAX_MULTIPLIER: 3,
-  MULTIPLIER_INCREASE: 0.1,
+  MAX_MULTIPLIER: 5,
+  MULTIPLIER_INCREASE: 0.2,
   PENALTY_POINTS: 1,
   PENALTY_INTERVAL: 5000
 };
@@ -17,7 +17,8 @@ const TOE_STYLES = {
       start: "#ffd1dc",
       end: "#ffb6c1"
     },
-    description: "Just a regular toe"
+    description: "Just a regular toe",
+    rarity: "common"
   },
   pink: {
     name: "Baby Pink",
@@ -26,7 +27,8 @@ const TOE_STYLES = {
       start: "#ffb6c1",
       end: "#ff69b4"
     },
-    description: "Sweet pink polish"
+    description: "Sweet pink polish",
+    rarity: "uncommon"
   },
   red: {
     name: "Classic Red",
@@ -35,7 +37,8 @@ const TOE_STYLES = {
       start: "#ff4444",
       end: "#cc0000"
     },
-    description: "Timeless red polish"
+    description: "Timeless red polish",
+    rarity: "rare"
   },
   blue: {
     name: "Ocean Blue",
@@ -44,7 +47,8 @@ const TOE_STYLES = {
       start: "#0088ff",
       end: "#0044cc"
     },
-    description: "Deep sea vibes"
+    description: "Deep sea vibes",
+    rarity: "epic"
   },
   golden: {
     name: "24K Gold",
@@ -53,13 +57,15 @@ const TOE_STYLES = {
       start: "#ffd700",
       end: "#daa520"
     },
-    description: "Pure gold luxury"
+    description: "Pure gold luxury",
+    rarity: "legendary"
   }
 };
 
 interface RealisticToeProps {
   style: keyof typeof TOE_STYLES;
   isSmashed: boolean;
+  multiplier: number;
 }
 
 interface BloodDrop {
@@ -68,75 +74,156 @@ interface BloodDrop {
   y: number;
   angle: number;
   scale: number;
+  velocity: number;
+}
+
+interface Particle {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  color: string;
+  size: number;
 }
 
 type ToeStyleKey = keyof typeof TOE_STYLES;
 
-const RealisticToe: React.FC<RealisticToeProps> = ({ style, isSmashed }) => {
+const RealisticToe: React.FC<RealisticToeProps> = ({ style, isSmashed, multiplier }) => {
   const gradientId = `nailGradient-${style}`;
+  const rarity = TOE_STYLES[style].rarity;
+  
+  const getRarityGlow = () => {
+    switch(rarity) {
+      case 'legendary': return 'drop-shadow(0 0 20px #ffd700) drop-shadow(0 0 40px #ffd700)';
+      case 'epic': return 'drop-shadow(0 0 15px #8a2be2) drop-shadow(0 0 30px #8a2be2)';
+      case 'rare': return 'drop-shadow(0 0 10px #ff4444) drop-shadow(0 0 20px #ff4444)';
+      case 'uncommon': return 'drop-shadow(0 0 8px #32cd32) drop-shadow(0 0 16px #32cd32)';
+      default: return 'drop-shadow(0 0 5px #ccc)';
+    }
+  };
   
   return (
-    <svg 
-      viewBox="0 0 200 300" 
-      className={`w-full h-full transition-transform duration-150 ${isSmashed ? 'scale-95' : ''}`}
-    >
-      <defs>
-        <linearGradient id="skinGradient" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#ffdbac"/>
-          <stop offset="50%" stopColor="#f1c27d"/>
-          <stop offset="100%" stopColor="#e0ac69"/>
-        </linearGradient>
-        
-        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={TOE_STYLES[style].nailGradient.start}/>
-          <stop offset="100%" stopColor={TOE_STYLES[style].nailGradient.end}/>
-        </linearGradient>
-      </defs>
+    <div className="relative w-full h-full">
+      <svg 
+        viewBox="0 0 200 300" 
+        className={`w-full h-full transition-all duration-200 ${
+          isSmashed ? 'scale-95 rotate-2' : 'scale-100'
+        } ${multiplier > 2 ? 'animate-pulse' : ''}`}
+        style={{ filter: getRarityGlow() }}
+      >
+        <defs>
+          <linearGradient id="skinGradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#ffdbac"/>
+            <stop offset="30%" stopColor="#f1c27d"/>
+            <stop offset="70%" stopColor="#e0ac69"/>
+            <stop offset="100%" stopColor="#d4a574"/>
+          </linearGradient>
+          
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={TOE_STYLES[style].nailGradient.start}/>
+            <stop offset="50%" stopColor={TOE_STYLES[style].nailGradient.end}/>
+            <stop offset="100%" stopColor={TOE_STYLES[style].nailGradient.end}/>
+          </linearGradient>
+          
+          <radialGradient id="nailShine" cx="0.3" cy="0.3" r="0.7">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.8)"/>
+            <stop offset="100%" stopColor="rgba(255,255,255,0)"/>
+          </radialGradient>
+          
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="2" dy="4" stdDeviation="3" floodColor="rgba(0,0,0,0.3)"/>
+          </filter>
+        </defs>
 
-      <g>
-        <path 
-          d="M40 50 C40 30, 160 30, 160 50 L180 200 C180 260, 20 260, 20 200 Z" 
-          fill="url(#skinGradient)"
-        />
-        
-        <path 
-          d="M60 40 C60 20, 140 20, 140 40 Q140 60, 100 70 Q60 60, 60 40"
-          fill={`url(#${gradientId})`}
-          stroke={TOE_STYLES[style].nailGradient.start}
-          strokeWidth="1"
-        />
-        
-        <path 
-          d="M40 120 Q100 130 160 120" 
-          fill="none" 
-          stroke="#e0ac69" 
-          strokeWidth="2" 
-          opacity="0.3"
-        />
-        
-        <path 
-          d="M45 140 Q100 150 155 140" 
-          fill="none" 
-          stroke="#e0ac69" 
-          strokeWidth="2" 
-          opacity="0.3"
-        />
-      </g>
-    </svg>
+        <g>
+          {/* Main toe body with shadow */}
+          <path 
+            d="M40 50 C40 30, 160 30, 160 50 L180 200 C180 260, 20 260, 20 200 Z" 
+            fill="url(#skinGradient)"
+            filter="url(#shadow)"
+          />
+          
+          {/* Toe nail with shine */}
+          <path 
+            d="M60 40 C60 20, 140 20, 140 40 Q140 60, 100 70 Q60 60, 60 40"
+            fill={`url(#${gradientId})`}
+            stroke={TOE_STYLES[style].nailGradient.start}
+            strokeWidth="2"
+          />
+          
+          {/* Nail shine effect */}
+          <path 
+            d="M70 25 C70 15, 130 15, 130 25 Q130 35, 100 40 Q70 35, 70 25"
+            fill="url(#nailShine)"
+            opacity="0.6"
+          />
+          
+          {/* Toe creases with better detail */}
+          <path 
+            d="M40 120 Q100 130 160 120" 
+            fill="none" 
+            stroke="#d4a574" 
+            strokeWidth="3" 
+            opacity="0.4"
+          />
+          
+          <path 
+            d="M45 140 Q100 150 155 140" 
+            fill="none" 
+            stroke="#d4a574" 
+            strokeWidth="3" 
+            opacity="0.4"
+          />
+          
+          <path 
+            d="M50 160 Q100 170 150 160" 
+            fill="none" 
+            stroke="#d4a574" 
+            strokeWidth="2" 
+            opacity="0.3"
+          />
+          
+          {/* Toe knuckle detail */}
+          <ellipse cx="100" cy="180" rx="15" ry="8" fill="#d4a574" opacity="0.3"/>
+          
+          {/* Smash effect overlay */}
+          {isSmashed && (
+            <g>
+              <circle cx="100" cy="100" r="80" fill="rgba(255,0,0,0.1)" className="animate-ping"/>
+              <path d="M80 80 L120 120 M120 80 L80 120" stroke="red" strokeWidth="3" opacity="0.7"/>
+            </g>
+          )}
+        </g>
+      </svg>
+      
+      {/* Rarity indicator */}
+      <div className="absolute top-2 right-2">
+        {rarity === 'legendary' && <Crown className="w-6 h-6 text-yellow-500 animate-pulse" />}
+        {rarity === 'epic' && <Sparkles className="w-6 h-6 text-purple-500 animate-pulse" />}
+        {rarity === 'rare' && <Star className="w-6 h-6 text-red-500" />}
+        {rarity === 'uncommon' && <Zap className="w-6 h-6 text-green-500" />}
+      </div>
+    </div>
   );
 };
 
 const ToeSmashGame = () => {
   const [score, setScore] = useState(0);
   const [timeUntilPenalty, setTimeUntilPenalty] = useState(POINT_VALUES.PENALTY_INTERVAL);
-  const [isActive, setIsActive] = useState(false);
+  const [isActive, setIsActive] = useState(true);
   const [isSmashed, setIsSmashed] = useState(false);
   const [multiplier, setMultiplier] = useState(1);
   const [showShop, setShowShop] = useState(false);
   const [currentStyle, setCurrentStyle] = useState<ToeStyleKey>('basic');
   const [ownedStyles, setOwnedStyles] = useState<ToeStyleKey[]>(['basic']);
   const [bloodDrops, setBloodDrops] = useState<BloodDrop[]>([]);
+  const [particles, setParticles] = useState<Particle[]>([]);
   const [showHammer, setShowHammer] = useState(false);
+  const [comboCount, setComboCount] = useState(0);
+  const [lastSmashTime, setLastSmashTime] = useState(0);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -146,6 +233,7 @@ const ToeSmashGame = () => {
           if (prev <= 0) {
             setScore(current => Math.max(0, current - POINT_VALUES.PENALTY_POINTS));
             setMultiplier(1);
+            setComboCount(0);
             return POINT_VALUES.PENALTY_INTERVAL;
           }
           return prev - 100;
@@ -155,29 +243,74 @@ const ToeSmashGame = () => {
     return () => clearInterval(interval);
   }, [isActive]);
 
-  const createBloodEffect = () => {
-    const newDrops = Array(15).fill(0).map((_, i) => ({
+  // Particle animation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setParticles(prev => 
+        prev.map(particle => ({
+          ...particle,
+          x: particle.x + particle.vx,
+          y: particle.y + particle.vy,
+          life: particle.life - 1,
+          vy: particle.vy + 0.1 // gravity
+        })).filter(particle => particle.life > 0)
+      );
+    }, 16);
+    return () => clearInterval(interval);
+  }, []);
+
+  const createParticleEffect = (x: number, y: number, color: string) => {
+    const newParticles = Array(8).fill(0).map((_, i) => ({
       id: Date.now() + i,
-      x: 50 + (Math.random() - 0.5) * 80,
-      y: 50 + (Math.random() - 0.5) * 80,
+      x: x + (Math.random() - 0.5) * 20,
+      y: y + (Math.random() - 0.5) * 20,
+      vx: (Math.random() - 0.5) * 8,
+      vy: (Math.random() - 0.5) * 8 - 2,
+      life: 30 + Math.random() * 20,
+      maxLife: 50,
+      color,
+      size: 2 + Math.random() * 3
+    }));
+    setParticles(prev => [...prev, ...newParticles]);
+  };
+
+  const createBloodEffect = () => {
+    const newDrops = Array(20).fill(0).map((_, i) => ({
+      id: Date.now() + i,
+      x: 50 + (Math.random() - 0.5) * 100,
+      y: 50 + (Math.random() - 0.5) * 100,
       angle: Math.random() * 360,
-      scale: 0.5 + Math.random()
+      scale: 0.3 + Math.random() * 0.7,
+      velocity: 1 + Math.random() * 2
     }));
     setBloodDrops((prev: BloodDrop[]) => [...prev, ...newDrops]);
     setTimeout(() => {
       setBloodDrops(prev => prev.filter(drop => !newDrops.includes(drop)));
-    }, 1000);
+    }, 2000);
   };
 
   const handleSmash = () => {
     if (!isActive || isSmashed) return;
 
+    const now = Date.now();
+    const timeSinceLastSmash = now - lastSmashTime;
+    
+    if (timeSinceLastSmash < 1000) {
+      setComboCount(prev => prev + 1);
+    } else {
+      setComboCount(1);
+    }
+    
+    setLastSmashTime(now);
+
     createBloodEffect();
+    createParticleEffect(50, 50, '#ff6b6b');
     setShowHammer(true);
     setIsSmashed(true);
 
-    // Integer points calculation
-    const pointsEarned = Math.floor(POINT_VALUES.BASE_POINTS * multiplier);
+    // Enhanced points calculation with combo bonus
+    const comboBonus = Math.min(comboCount * 0.1, 0.5);
+    const pointsEarned = Math.floor(POINT_VALUES.BASE_POINTS * multiplier * (1 + comboBonus));
     setScore(prev => prev + pointsEarned);
 
     setMultiplier(prev => Math.min(prev + POINT_VALUES.MULTIPLIER_INCREASE, POINT_VALUES.MAX_MULTIPLIER));
@@ -186,7 +319,7 @@ const ToeSmashGame = () => {
     setTimeout(() => {
       setIsSmashed(false);
       setShowHammer(false);
-    }, 200);
+    }, 300);
   };
 
   const purchaseStyle = (style: keyof typeof TOE_STYLES) => {
@@ -195,133 +328,191 @@ const ToeSmashGame = () => {
       setOwnedStyles(prev => [...prev, style]);
       setCurrentStyle(style);
       setShowShop(false);
+      
+      // Celebration effect
+      createParticleEffect(50, 50, '#ffd700');
     }
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 p-8 bg-gray-50 rounded-xl max-w-xl mx-auto">
-      {/* Score Display */}
-      <div className="w-full flex justify-between items-center">
-        <div className="flex items-center gap-2 text-3xl font-bold">
-          <Star className="w-8 h-8 text-yellow-500" />
-          <span>{Math.floor(score)}</span>
-        </div>
-        <button
-          onClick={() => setShowShop(!showShop)}
-          className="p-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
-        >
-          <ShoppingBag className="w-6 h-6" />
-        </button>
-      </div>
-
-      {/* Timer */}
-      <div className="w-full flex items-center gap-2">
-        <Clock className={timeUntilPenalty < 1000 ? 'text-red-500' : 'text-blue-500'} />
-        <div className="w-full h-3 bg-gray-200 rounded-full">
-          <div
-            className={`h-full transition-all duration-100 ${
-              timeUntilPenalty < 1000 ? 'bg-red-500' : 'bg-blue-500'
-            }`}
-            style={{ width: `${(timeUntilPenalty / POINT_VALUES.PENALTY_INTERVAL) * 100}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Multiplier */}
-      <div className="text-xl font-bold text-purple-500">
-        x{Math.floor(multiplier)}
-      </div>
-
-      {/* Game Area */}
-      <div className="relative w-64 h-96">
-        <button
-          onClick={handleSmash}
-          disabled={!isActive || isSmashed}
-          className="w-full h-full relative"
-        >
-          <RealisticToe style={currentStyle} isSmashed={isSmashed} />
-          
-          {bloodDrops.map(drop => (
-            <div
-              key={drop.id}
-              className="absolute w-2 h-2 bg-red-600 rounded-full animate-drip"
-              style={{
-                left: `${drop.x}%`,
-                top: `${drop.y}%`,
-                transform: `rotate(${drop.angle}deg) scale(${drop.scale})`,
-              }}
-            />
-          ))}
-
-          {showHammer && (
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 origin-bottom">
-              <div className="text-7xl animate-smash">
-                🔨
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex flex-col items-center justify-center p-4">
+      <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 max-w-2xl w-full border border-white/20 shadow-2xl">
+        {/* Enhanced Score Display */}
+        <div className="w-full flex justify-between items-center mb-6">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Star className="w-10 h-10 text-yellow-400 drop-shadow-lg" />
+              <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                {comboCount}
               </div>
             </div>
-          )}
-        </button>
-      </div>
-
-      {/* Shop Modal */}
-      {showShop && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Toe Shop</h2>
-              <button onClick={() => setShowShop(false)} className="text-gray-500">✕</button>
-            </div>
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {Object.entries(TOE_STYLES).map(([id, item]) => (
-                <div key={id} className="p-4 border rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="font-bold">{item.name}</h3>
-                      <p className="text-sm text-gray-600">{item.description}</p>
-                    </div>
-                    {ownedStyles.includes(id as ToeStyleKey) ? (
-                      <button
-                        onClick={() => {
-                          setCurrentStyle(id as ToeStyleKey);
-                          setShowShop(false);
-                        }}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                      >
-                        Use
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => purchaseStyle(id as ToeStyleKey)}
-                        disabled={score < item.price}
-                        className={`px-4 py-2 rounded-lg ${
-                          score >= item.price
-                            ? 'bg-green-500 text-white hover:bg-green-600'
-                            : 'bg-gray-200 text-gray-500'
-                        }`}
-                      >
-                        {item.price} pts
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+            <div className="text-4xl font-bold text-white drop-shadow-lg">
+              {Math.floor(score).toLocaleString()}
             </div>
           </div>
+          <button
+            onClick={() => setShowShop(!showShop)}
+            className="p-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+          >
+            <ShoppingBag className="w-7 h-7" />
+          </button>
         </div>
-      )}
 
-      {/* Start Button */}
-      <button
-        onClick={() => {
-          setIsActive(true);
-          setScore(0);
-          setMultiplier(1);
-          setTimeUntilPenalty(POINT_VALUES.PENALTY_INTERVAL);
-        }}
-        className="px-8 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 text-xl font-bold"
-      >
-        {isActive ? 'Reset Game' : 'Start Game'}
-      </button>
+        {/* Enhanced Timer */}
+        <div className="w-full flex items-center gap-3 mb-6">
+          <Clock className={`w-6 h-6 ${timeUntilPenalty < 1000 ? 'text-red-400 animate-pulse' : 'text-blue-400'}`} />
+          <div className="w-full h-4 bg-gray-700/50 rounded-full overflow-hidden backdrop-blur-sm">
+            <div
+              className={`h-full transition-all duration-100 rounded-full ${
+                timeUntilPenalty < 1000 
+                  ? 'bg-gradient-to-r from-red-500 to-red-600' 
+                  : 'bg-gradient-to-r from-blue-500 to-cyan-500'
+              }`}
+              style={{ width: `${(timeUntilPenalty / POINT_VALUES.PENALTY_INTERVAL) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Enhanced Multiplier */}
+        <div className="text-center mb-6">
+          <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 drop-shadow-lg">
+            x{multiplier.toFixed(1)}
+          </div>
+          {multiplier > 2 && (
+            <div className="text-sm text-yellow-300 animate-pulse">
+              🔥 COMBO MODE! 🔥
+            </div>
+          )}
+        </div>
+
+        {/* Enhanced Game Area */}
+        <div className="relative w-80 h-96 mx-auto mb-6">
+          <button
+            onClick={handleSmash}
+            disabled={!isActive || isSmashed}
+            className="w-full h-full relative group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-pink-200/20 to-purple-200/20 rounded-3xl backdrop-blur-sm border border-white/30 group-hover:border-white/50 transition-all duration-200" />
+            
+            <div className="relative z-10 w-full h-full flex items-center justify-center">
+              <RealisticToe style={currentStyle} isSmashed={isSmashed} multiplier={multiplier} />
+            </div>
+            
+            {/* Blood drops with enhanced animation */}
+            {bloodDrops.map(drop => (
+              <div
+                key={drop.id}
+                className="absolute w-3 h-3 bg-gradient-to-br from-red-600 to-red-800 rounded-full animate-bounce"
+                style={{
+                  left: `${drop.x}%`,
+                  top: `${drop.y}%`,
+                  transform: `rotate(${drop.angle}deg) scale(${drop.scale})`,
+                  animationDuration: `${drop.velocity}s`,
+                }}
+              />
+            ))}
+
+            {/* Particles */}
+            {particles.map(particle => (
+              <div
+                key={particle.id}
+                className="absolute w-1 h-1 rounded-full"
+                style={{
+                  left: `${particle.x}%`,
+                  top: `${particle.y}%`,
+                  backgroundColor: particle.color,
+                  width: `${particle.size}px`,
+                  height: `${particle.size}px`,
+                  opacity: particle.life / particle.maxLife,
+                }}
+              />
+            ))}
+
+            {/* Enhanced hammer effect */}
+            {showHammer && (
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 origin-bottom z-20">
+                <div className="text-8xl animate-bounce drop-shadow-2xl">
+                  🔨
+                </div>
+              </div>
+            )}
+          </button>
+        </div>
+
+        {/* Enhanced Shop Modal */}
+        {showShop && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-8 max-w-2xl w-full border border-white/20 shadow-2xl">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-3xl font-bold text-white">✨ Toe Shop ✨</h2>
+                <button 
+                  onClick={() => setShowShop(false)} 
+                  className="text-gray-400 hover:text-white text-2xl transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                {Object.entries(TOE_STYLES).map(([id, item]) => (
+                  <div key={id} className="p-6 border border-white/20 rounded-2xl bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all duration-200">
+                    <div className="flex justify-between items-center">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-bold text-white text-lg">{item.name}</h3>
+                          {item.rarity === 'legendary' && <Crown className="w-5 h-5 text-yellow-500" />}
+                          {item.rarity === 'epic' && <Sparkles className="w-5 h-5 text-purple-500" />}
+                          {item.rarity === 'rare' && <Star className="w-5 h-5 text-red-500" />}
+                          {item.rarity === 'uncommon' && <Zap className="w-5 h-5 text-green-500" />}
+                        </div>
+                        <p className="text-sm text-gray-300">{item.description}</p>
+                      </div>
+                      {ownedStyles.includes(id as ToeStyleKey) ? (
+                        <button
+                          onClick={() => {
+                            setCurrentStyle(id as ToeStyleKey);
+                            setShowShop(false);
+                          }}
+                          className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 font-bold"
+                        >
+                          Use
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => purchaseStyle(id as ToeStyleKey)}
+                          disabled={score < item.price}
+                          className={`px-6 py-3 rounded-xl font-bold transition-all duration-200 ${
+                            score >= item.price
+                              ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 transform hover:scale-105'
+                              : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                          }`}
+                        >
+                          {item.price} pts
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Enhanced Reset Button */}
+        <div className="text-center">
+          <button
+            onClick={() => {
+              setIsActive(true);
+              setScore(0);
+              setMultiplier(1);
+              setComboCount(0);
+              setTimeUntilPenalty(POINT_VALUES.PENALTY_INTERVAL);
+            }}
+            className="px-10 py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-2xl hover:from-green-600 hover:to-emerald-600 text-xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+          >
+            🔄 Reset Game
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
