@@ -91,6 +91,36 @@ interface Particle {
 
 type ToeStyleKey = keyof typeof TOE_STYLES;
 
+const RealisticHammer = () => (
+  <svg viewBox="0 0 200 200" className="w-48 h-48 drop-shadow-2xl filter">
+    <defs>
+      <linearGradient id="woodGradient" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="#5D4037" />
+        <stop offset="50%" stopColor="#8D6E63" />
+        <stop offset="100%" stopColor="#5D4037" />
+      </linearGradient>
+      <linearGradient id="metalGradient" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#455A64" />
+        <stop offset="30%" stopColor="#90A4AE" />
+        <stop offset="60%" stopColor="#CFD8DC" />
+        <stop offset="100%" stopColor="#455A64" />
+      </linearGradient>
+      <filter id="hammerShadow">
+        <feDropShadow dx="2" dy="4" stdDeviation="2" floodOpacity="0.5"/>
+      </filter>
+    </defs>
+
+    {/* Handle */}
+    <rect x="90" y="60" width="20" height="130" rx="5" fill="url(#woodGradient)" />
+
+    {/* Head */}
+    <rect x="40" y="30" width="120" height="60" rx="5" fill="url(#metalGradient)" filter="url(#hammerShadow)" />
+
+    {/* Shine on head */}
+    <path d="M50 40 L150 40 L140 50 L60 50 Z" fill="white" opacity="0.3" />
+  </svg>
+);
+
 const RealisticToe: React.FC<RealisticToeProps> = ({ style, isSmashed, multiplier }) => {
   const gradientId = `nailGradient-${style}`;
   const rarity = TOE_STYLES[style].rarity;
@@ -430,9 +460,9 @@ const ToeSmashGame = () => {
 
             {/* Enhanced hammer effect */}
             {showHammer && (
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 origin-bottom z-20">
-                <div className="text-8xl animate-bounce drop-shadow-2xl">
-                  🔨
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 origin-bottom z-20 pointer-events-none">
+                <div className="animate-smash drop-shadow-2xl">
+                  <RealisticHammer />
                 </div>
               </div>
             )}
