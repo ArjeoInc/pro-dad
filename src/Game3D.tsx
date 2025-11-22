@@ -43,15 +43,27 @@ export const Toe3D: React.FC<Toe3DProps> = ({ style, isSmashed, multiplier }) =>
 
   return (
     <group ref={groupRef} position={[0, -1, 0]}>
-      {/* Main Toe Body */}
-      <mesh position={[0, 1.5, 0]}>
-        <capsuleGeometry args={[1, 2.5, 4, 16]} />
+      {/* Base Joint / Ball of the toe */}
+      <mesh position={[0, 0.8, 0]} castShadow receiveShadow>
+        <sphereGeometry args={[1.1, 32, 32]} />
+        <meshStandardMaterial color="#f1c27d" roughness={0.3} />
+      </mesh>
+
+      {/* Main Phalange Shaft */}
+      <mesh position={[0, 1.8, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[1.0, 1.1, 2.0, 32]} />
+        <meshStandardMaterial color="#f1c27d" roughness={0.3} />
+      </mesh>
+
+      {/* Tip (Distal Phalanx) */}
+      <mesh position={[0, 2.8, 0]} castShadow receiveShadow>
+        <sphereGeometry args={[1.0, 32, 32]} />
         <meshStandardMaterial color="#f1c27d" roughness={0.3} />
       </mesh>
 
       {/* Toenail */}
-      <mesh position={[0, 2.2, 0.8]} rotation={[-0.2, 0, 0]}>
-        <cylinderGeometry args={[0.7, 0.7, 0.1, 32]} />
+      <mesh position={[0, 2.9, 0.7]} rotation={[-0.3, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.7, 0.75, 0.1, 32]} />
         <meshStandardMaterial
             color={nailColor}
             metalness={style === 'golden' ? 0.8 : 0.1}
@@ -60,18 +72,18 @@ export const Toe3D: React.FC<Toe3DProps> = ({ style, isSmashed, multiplier }) =>
       </mesh>
 
       {/* Nail Shine/Highlight */}
-       <mesh position={[0, 2.2, 0.86]} rotation={[-0.2, 0, 0]}>
-         <planeGeometry args={[0.5, 0.5]} />
-         <meshBasicMaterial color="white" opacity={0.3} transparent />
+       <mesh position={[0, 2.95, 0.72]} rotation={[-0.3, 0, 0]}>
+         <planeGeometry args={[0.5, 0.3]} />
+         <meshBasicMaterial color="white" opacity={0.3} transparent side={THREE.DoubleSide} />
        </mesh>
 
       {/* Knuckle Wrinkles */}
-      <mesh position={[0, 1.5, 0.9]} rotation={[0, 0, 0]}>
-         <torusGeometry args={[0.8, 0.05, 16, 32, 2]} />
+      <mesh position={[0, 1.8, 0.95]} rotation={[0.2, 0, 0]}>
+         <torusGeometry args={[0.9, 0.06, 16, 32, 2]} />
          <meshStandardMaterial color="#d4a574" />
       </mesh>
-      <mesh position={[0, 1.2, 0.9]} rotation={[0, 0, 0]}>
-         <torusGeometry args={[0.85, 0.05, 16, 32, 2]} />
+      <mesh position={[0, 1.5, 1.0]} rotation={[0.1, 0, 0]}>
+         <torusGeometry args={[0.95, 0.06, 16, 32, 2]} />
          <meshStandardMaterial color="#d4a574" />
       </mesh>
 
@@ -95,9 +107,9 @@ export const Hammer3D: React.FC<{ isSmashing: boolean }> = ({ isSmashing }) => {
          groupRef.current.position.z = 2;
       }
 
-      // Smooth return would be better but simple logic for now
-       const targetRot = isSmashing ? -Math.PI / 3 : 0;
-       const targetY = isSmashing ? 0 : 5;
+      // Smooth return
+       const targetRot = isSmashing ? -Math.PI / 3 : 0; // Tilt slightly when smashing
+       const targetY = isSmashing ? 0.5 : 5;
        const targetZ = isSmashing ? 0 : 2;
 
        groupRef.current.rotation.x = THREE.MathUtils.lerp(groupRef.current.rotation.x, targetRot, 0.2);
@@ -109,16 +121,30 @@ export const Hammer3D: React.FC<{ isSmashing: boolean }> = ({ isSmashing }) => {
   return (
     <group ref={groupRef} position={[0, 5, 2]}>
       {/* Handle */}
-      <mesh position={[0, 2, 0]}>
-        <cylinderGeometry args={[0.15, 0.15, 4, 16]} />
-        <meshStandardMaterial color="#8D6E63" />
+      <mesh position={[0, 2.5, 0]} castShadow>
+        <cylinderGeometry args={[0.15, 0.2, 5, 16]} />
+        <meshStandardMaterial color="#5D4037" roughness={0.8} />
       </mesh>
 
-      {/* Head */}
-      <group position={[0, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <RoundedBox args={[1.5, 2.5, 1.5]} radius={0.1} smoothness={4}>
-           <meshStandardMaterial color="#546e7a" metalness={0.6} roughness={0.2} />
-        </RoundedBox>
+      {/* Head (Mallet Style) */}
+      <group position={[0, 0, 0]}>
+          {/* Main Head Block */}
+          <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
+            <cylinderGeometry args={[0.8, 0.8, 3, 32]} />
+            <meshStandardMaterial color="#37474F" metalness={0.6} roughness={0.3} />
+          </mesh>
+
+          {/* Left Rim */}
+          <mesh position={[-1.4, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.85, 0.8, 0.2, 32]} />
+              <meshStandardMaterial color="#263238" metalness={0.7} roughness={0.2} />
+          </mesh>
+
+           {/* Right Rim */}
+           <mesh position={[1.4, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.8, 0.85, 0.2, 32]} />
+              <meshStandardMaterial color="#263238" metalness={0.7} roughness={0.2} />
+          </mesh>
       </group>
     </group>
   );
@@ -153,7 +179,7 @@ export const BloodParticles: React.FC<{ active: boolean }> = ({ active }) => {
        particles.forEach(p => {
           if (p.life <= 0) {
              p.life = 1; // activate
-             p.position.set(0, 2.2, 0.8); // Reset to toe position
+             p.position.set(0, 2.5, 0.8); // Reset to toe tip position (adjusted for new toe height)
              p.velocity.set(
                 (Math.random() - 0.5) * 10,
                 Math.random() * 5 + 2,
