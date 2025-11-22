@@ -44,6 +44,18 @@
   100% { background-position: 200% 0; }
 }
 
+/* Smash animation */
+@keyframes smash {
+  0% { transform: rotate(45deg); }
+  60% { transform: rotate(-10deg); }
+  80% { transform: rotate(0deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.animate-smash {
+  animation: smash 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
 /* Custom utility classes */
 .animate-glow {
   animation: glow 2s ease-in-out infinite;
